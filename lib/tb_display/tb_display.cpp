@@ -23,7 +23,11 @@
  ******************************************************************************/
 
 #include <Arduino.h>
+#ifdef PLUS
+#include <M5StickCPlus.h>
+#else
 #include <M5StickC.h>
+#endif
 #include "tb_display.h"
 
 

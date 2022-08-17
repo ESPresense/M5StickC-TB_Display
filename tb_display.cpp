@@ -1,36 +1,16 @@
 /******************************************************************************
- * tb_display.cpp
- * Library for a simple text buffer scrolling display on the M5StickC.
+ * Originally written by:
+ *
  * Hague Nusseck @ electricidea
  * v1.3 04.Feb.2020
  * https://github.com/electricidea/M5StickC-TB_Display
- * 
- * This library makes it easy to display texts on the M5StickC.
- * The display behaves like a terminal: New text is added at the bottom.
- * The text scrolls up with every new line. The lines are automatically wrapped.
- * The display can be used in any orientation. 
- * 
- * Changelog:
- * v1.0 = - initial version
- * v1.1 = - Added delay parameter to tb_display_print_String function
- *        - Added text demo in Example (Button B on M5StickC)
- * v1.2 = - Supress of space characters as first character on a new row
- *          after a new line
- *        - Add a word wrapping fuction inside the print_char function
- * v1.3 = - Bugfix if the character that causes a word wrap is a space character
- * 
+ *
  * Distributed as-is; no warranty is given.
  ******************************************************************************/
 
 #include <Arduino.h>
-#ifdef PLUS
-#include <M5StickCPlus.h>
-#else
-#include <M5StickC.h>
-#endif
+#include <TFT_eSPI.h>
 #include "tb_display.h"
-
-
 
 // TextSize 1 is very small on the display = hard to read
 // Textsize 2 is good readable without the need of an microscope.
@@ -45,15 +25,12 @@
 #define TEXT_BUFFER_LINE_LENGTH_MAX 60
 char text_buffer[TEXT_BUFFER_HEIGHT_MAX][TEXT_BUFFER_LINE_LENGTH_MAX];
 
-int text_size = 2; // 1, 2, 3, etc.  Each corresponds to 8px taller:  8, 16, 24
 int text_buffer_height;
-int text_buffer_line_length;
+int text_buffer_width;
 int text_buffer_write_pointer_x;
 int text_buffer_write_pointer_y;
 int text_buffer_read_pointer;
-// with M5.Lcd.setRotation(1) 
-// the position 0,0 is the upper left corner
-// starting a bit more right...
+
 #define SCREEN_XSTARTPOS 5
 int screen_xpos = SCREEN_XSTARTPOS;
 // start writing at the last line
@@ -83,35 +60,24 @@ uint32_t tb_display_background_color = TFT_BLACK;
 //    5 rows of text in landscape mode
 //   10 rows of text in portrait mode
 // =============================================================
-void tb_display_init(int ScreenRotation, int TextSize){
-  text_size = TextSize;
-  M5.Lcd.setRotation(ScreenRotation);
-  M5.Lcd.setTextSize(text_size);
-  float lcdHeight = M5.Lcd.height();
-  float lcdWidth = M5.Lcd.width();
-  text_buffer_height = ceil(lcdHeight / (text_size * 8));
-  text_buffer_line_length = 60;
-  // width of the screen in landscape mode is 160 pixel
-  // A small margin on the right side prevent false print results
-  screen_max = lcdWidth-2; 
-  tb_display_clear();
-  tb_display_show();
-}
-
-// =============================================================
-// Initialization of the Text Buffer and Screen
-// ScreenRotation values:
-// 1 = Button right
-// 2 = Button above
-// 3 = Button left
-// 4 = Button below
-// Display size of M5StickC = 160x80pixel
-// With TEXT_HEIGHT=16, the screen can display:
-//    5 rows of text in landscape mode
-//   10 rows of text in portrait mode
-// =============================================================
-void tb_display_init(int ScreenRotation){
-  tb_display_init(ScreenRotation, 2);
+TFT_eSPI tft = TFT_eSPI();
+int charHeight = 16;
+int charWidth = 8;
+void tb_display_init() {
+    tft.init();
+    tft.setRotation(1);
+    tft.setTextDatum(TC_DATUM);
+    tft.setTextFont(TFT_FONT);
+    tft.setTextPadding(8);
+    float lcdHeight = tft.height();
+    float lcdWidth = tft.width();
+    screen_max = lcdWidth - 2;
+    charHeight = tft.fontHeight();
+    charWidth = tft.textWidth("W") + 2;
+    text_buffer_height = ceil(lcdHeight / charHeight);
+    text_buffer_width = ceil(screen_max / charWidth);
+    tb_display_clear();
+    tb_display_show();
 }
 
 // =============================================================
@@ -129,35 +95,36 @@ void tb_display_clear(){
   text_buffer_write_pointer_x = 0;
   text_buffer_write_pointer_y = text_buffer_height-1;
   screen_xpos = SCREEN_XSTARTPOS;
-  screen_ypos = M5.Lcd.height() - (text_size * 8);
+  screen_ypos = tft.height() - charHeight;
 }
 
 // =============================================================
 // draw a character, and return the width of that char in px
 // =============================================================
-int drawChar(uint16_t data, int32_t screen_xpos, int32_t screen_ypos, uint8_t text_size) {
-    M5.Lcd.drawChar(screen_xpos, screen_ypos, data, tb_display_text_color, tb_display_background_color, text_size);
-    return M5.Lcd.textWidth(String((char)data));
+int tb_drawChar(uint16_t data, int32_t screen_xpos, int32_t screen_ypos) {
+    tft.drawChar(screen_xpos, screen_ypos, data, tb_display_text_color, tb_display_background_color, TFT_FONT);
+    auto measure = tft.textWidth(String((char)data));
+    Serial.printf("tb_drawChar: %c, %d, %d, %d\n", data, screen_xpos, screen_ypos, measure);
+    return charWidth;
 }
 
 // =============================================================
 // clear the screen and display the text buffer
 // =============================================================
 void tb_display_show(){
-  M5.Lcd.fillScreen(tb_display_background_color);
-  int textHeight = (text_size * 8);
+  tft.fillScreen(tb_display_background_color);
   // Because different text sizes may not fit exactly, this may be negative.  That's okay.
-  int yPos = M5.Lcd.height() - text_buffer_height * textHeight;
+  int yPos = tft.height() - text_buffer_height * charHeight;
   for(int n=0; n<text_buffer_height; n++){
     // modulo operation for line position
     int line = (text_buffer_read_pointer+n) % text_buffer_height;
     int xPos = SCREEN_XSTARTPOS;
     int charpos=0;
     while(xPos < screen_max && text_buffer[line][charpos] != '\0'){
-      xPos += drawChar(text_buffer[line][charpos],xPos,yPos,text_size);
+      xPos += tb_drawChar(text_buffer[line][charpos],xPos,yPos);
       charpos++;
     }
-    yPos = yPos + textHeight;
+    yPos = yPos + charHeight;
   }
   screen_xpos = SCREEN_XSTARTPOS;
 }
@@ -184,7 +151,7 @@ void tb_display_new_line(){
 // the character is added to the text buffer and
 // directly printed on the screen.
 // The text is automatically wrapped if longer than the display
-// example: 
+// example:
 //    tb_display_print_char('X');
 // =============================================================
 void tb_display_print_char(byte data){
@@ -197,12 +164,12 @@ void tb_display_print_char(byte data){
   // only 'printable' characters
   if (data > 31 && data < 128) {
     // print the character and get the new xpos
-    screen_xpos += drawChar(data, screen_xpos, screen_ypos, text_size);
+    screen_xpos += tb_drawChar(data, screen_xpos, screen_ypos);
     // if maximum number of characters reached
-    if(text_buffer_write_pointer_x >= text_buffer_line_length-1){
+    if(text_buffer_write_pointer_x >= text_buffer_width-1){
       tb_display_new_line();
       // draw the character again because it was out of the screen last time
-      screen_xpos += drawChar(data,screen_xpos,screen_ypos,text_size);
+      screen_xpos += tb_drawChar(data,screen_xpos,screen_ypos);
     }
     // or if line wrap is reached
     if(screen_xpos >= screen_max) {
@@ -240,13 +207,13 @@ void tb_display_print_char(byte data){
       tb_display_new_line();
       // if character passed to the function is a space character, then don't display
       // it as the first character of the new line
-      if(data == ' ') 
+      if(data == ' ')
         // don't use the buffer at all
         n = 0;
       n--;
       while(n >= 0){
         // draw the characters from the buffer back on the screen
-        screen_xpos += drawChar(Char_buffer[n],screen_xpos,screen_ypos,text_size);
+        screen_xpos += tb_drawChar(Char_buffer[n],screen_xpos,screen_ypos);
         // write the characters into the screen buffer of the new line
         text_buffer[text_buffer_write_pointer_y][text_buffer_write_pointer_x] = Char_buffer[n];
         text_buffer_write_pointer_x++;
@@ -271,11 +238,11 @@ void tb_display_print_char(byte data){
 // processing of the String. Then, it looks like Teletype or Typewriter
 // The delay is in milliseconds.
 // The text is automatically wrapped if longer than the display
-// example: 
+// example:
 //    tb_display_print_String("a new line\n");
 //    tb_display_print_String("one\nand two lines\n");
 //
-//    char String_buffer[128]; 
+//    char String_buffer[128];
 //    snprintf(String_buffer, sizeof(String_buffer), "\nthe value: %i",value);
 //    tb_display_print_String(String_buffer);
 //

@@ -1,60 +1,16 @@
 /******************************************************************************
- * tb_display.h
- * Library for a simple text buffer scrolling display on the M5StickC.
+ * Originally written by:
+ *
  * Hague Nusseck @ electricidea
- * v1.3 04.Feb.2020
  * https://github.com/electricidea/M5StickC-TB_Display
- * 
- * This library makes it easy to display texts on the M5StickC.
- * The display behaves like a terminal: New text is added at the bottom.
- * The text scrolls up with every new line. The lines are automatically wrapped.
- * The display can be used in any orientation. 
- * 
- * Changelog:
- * v1.0 = - initial version
- * v1.1 = - Added delay parameter to tb_display_print_String function
- *        - Added text demo in Example (Button B on M5StickC)
- * v1.2 = - Supress of space characters as first character on a new row
- *          after a new line
- *        - Add a word wrapping fuction inside the print_char function
- * v1.3 = - Bugfix if the character that causes a word wrap is a space character
- * 
+ *
  * Distributed as-is; no warranty is given.
  ******************************************************************************/
 
 // Enable or disable Word Wrap
 extern boolean tb_display_word_wrap;
 
-// =============================================================
-//           tb_display_init(int ScreenRotation);
-// Initialization of the Text Buffer and Screen
-// ScreenRotation values:
-// 1 = Button right
-// 2 = Button above
-// 3 = Button left
-// 4 = Button below
-// Display size of M5StickC = 160x80pixel
-// With TextSize = 2, the screen can display:
-//    5 rows of text in landscape mode
-//   10 rows of text in portrait mode
-// =============================================================
-void tb_display_init(int ScreenRotation);
-
-// =============================================================
-//           tb_display_init(int ScreenRotation);
-// Initialization of the Text Buffer and Screen
-// ScreenRotation values:
-// 1 = Button right
-// 2 = Button above
-// 3 = Button left
-// 4 = Button below
-// Display size of M5StickC = 160x80pixel
-// TextSize 1, 2, 3... corresponds to character height 8, 16, 24...
-// With TextSize = 2, the screen can display:
-//    5 rows of text in landscape mode
-//   10 rows of text in portrait mode
-// =============================================================
-void tb_display_init(int ScreenRotation, int TextSize);
+void tb_display_init();
 
 // =============================================================
 //           tb_display_show();
@@ -85,11 +41,11 @@ void tb_display_new_line();
 // processing of the String. Then, it looks like Teletype or Typewriter
 // The delay is in milliseconds.
 // The text is automatically wrapped if longer than the display
-// example: 
+// example:
 //    tb_display_print_String("a new line\n");
 //    tb_display_print_String("one\nand two lines\n");
 //
-//    char String_buffer[128]; 
+//    char String_buffer[128];
 //    snprintf(String_buffer, sizeof(String_buffer), "\nthe value: %i",value);
 //    tb_display_print_String(String_buffer);
 //
@@ -106,7 +62,7 @@ void tb_display_print_String(const char *s, int chr_delay = 0);
 // the character is added to the text buffer and
 // directly printed on the screen.
 // The text is automatically wrapped if longer than the display
-// example: 
+// example:
 //    tb_display_print_char('X');
 // =============================================================
 void tb_display_print_char(byte data);

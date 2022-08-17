@@ -102,8 +102,7 @@ void tb_display_clear(){
 // =============================================================
 int tb_drawChar(uint16_t data, int32_t screen_xpos, int32_t screen_ypos) {
     tft.drawChar(screen_xpos, screen_ypos, data, tb_display_text_color, tb_display_background_color, TFT_FONT);
-    auto measure = tft.textWidth(String((char)data));
-    Serial.printf("tb_drawChar: %c, %d, %d, %d\n", data, screen_xpos, screen_ypos, measure);
+    // auto measure = tft.textWidth(String((char)data));
     return charWidth;
 }
 

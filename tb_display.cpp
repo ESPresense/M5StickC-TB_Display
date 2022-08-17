@@ -2,7 +2,6 @@
  * Originally written by:
  *
  * Hague Nusseck @ electricidea
- * v1.3 04.Feb.2020
  * https://github.com/electricidea/M5StickC-TB_Display
  *
  * Distributed as-is; no warranty is given.
